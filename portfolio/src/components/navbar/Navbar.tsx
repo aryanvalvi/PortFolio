@@ -159,34 +159,6 @@ const Navbar = () => {
           )}
         </div>
       </motion.nav>
-      <button
-        className="absolute "
-        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          {theme === "light" ? (
-            <motion.div
-              key="sun"
-              initial={{opacity: 0, rotate: -90, scale: 0.5}}
-              animate={{opacity: 1, rotate: 0, scale: 1}}
-              exit={{opacity: 0, rotate: 90, scale: 0.5}}
-              transition={{duration: 0.3}}
-            >
-              <FiSun size={24} className="text-yellow-500" />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="moon"
-              initial={{opacity: 0, rotate: 90, scale: 0.5}}
-              animate={{opacity: 1, rotate: 0, scale: 1}}
-              exit={{opacity: 0, rotate: -90, scale: 0.5}}
-              transition={{duration: 0.3}}
-            >
-              <FiMoon size={24} className="text-blue-400" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </button>
 
       {/* MOBILE NAVBAR (NEW) */}
       <div
