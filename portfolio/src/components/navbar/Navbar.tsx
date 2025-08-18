@@ -199,6 +199,7 @@ const Navbar = () => {
           {navItems.map((item, idx) =>
             item.title === "Download Resume" ? (
               <a
+                onClick={() => setMobileOpen(!mobileOpen)}
                 key={idx}
                 href={item.href}
                 download
@@ -208,6 +209,7 @@ const Navbar = () => {
               </a>
             ) : (
               <Link
+                onClick={() => setMobileOpen(!mobileOpen)}
                 key={idx}
                 href={item.href}
                 className="text-sm dark:text-white"
