@@ -11,7 +11,7 @@ const Projects2 = () => {
       stack: ["Next.js", "TypeScript", "Node.js", "Express", "MongoDB"],
       des: "Uiuxyn is my personal design and development showcase where I experiment with UI concepts, share unique projects, and highlight modern web experiences. It’s a blend of creativity and engineering—where clean design meets scalable code.",
       img: "/newport/uiux.png",
-      live: "https:uiuxyn.xyz",
+      live: "https://uiuxyn.xyz",
     },
     {
       heading: "Team website",
