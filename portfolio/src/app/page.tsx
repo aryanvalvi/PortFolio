@@ -123,7 +123,7 @@ const page = () => {
                 </ul>
               </div>
               <div>
-                <h2 className="text-md md:text-xlfont-bold text-secondary dark:text-secondary-dark">
+                <h2 className="text-md md:text-xl font-bold text-secondary dark:text-secondary-dark">
                   Deployment
                 </h2>
                 <p className="text-sm text-secondary">
