@@ -174,7 +174,7 @@ const Navbar = () => {
             : "bg-transparent"
         } */}
         {/* Logo on mobile */}
-        <Link href={"/"}>
+        <Link href={"/"} onClick={() => setMobileOpen(false)}>
           <Image
             className="h-10 w-10 object-cover rounded-full"
             src={"/main.png"}
