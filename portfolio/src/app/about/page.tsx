@@ -25,7 +25,7 @@ const Page = () => {
           <div className="flex justify-center lg:justify-start lg:flex-shrink-0">
             <Image
               className="w-64 sm:w-80 lg:w-[22rem] h-auto rounded-lg"
-              src="/aryan2.jpeg"
+              src="/aryan.jpeg"
               width={300}
               height={300}
               alt="avatar"

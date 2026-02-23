@@ -41,7 +41,7 @@ const page = () => {
             <div className="relative order-1 md:order-2 ">
               <Image
                 className="object-cover w-30 h-30 md:w-[60rem] md:h-auto md:rounded-none relative  bg-blue-500 rounded-full md:[clip-path:polygon(50%_0%,100%_0,90%_77%,18%_100%,0%_38%)]"
-                src="/aryan.jpeg"
+                src="/AryanValvi.jpg"
                 width={300}
                 height={300}
                 alt="avatar"
