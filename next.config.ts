@@ -1,14 +1,13 @@
 import type {NextConfig} from "next"
-import createMDX from "@next/mdx"
+
+// Temporarily disable automatic MDX integration to avoid Turbopack
+// processing issues on some environments (e.g. VPS with Next 16).
+// If you rely on MDX pages, we'll follow up with a compatible MDX
+// integration for Next 16. For now, export a minimal config.
 const nextConfig: NextConfig = {
-  /* config options here */
-  pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
+  // Keep standard page extensions (without md/mdx) to avoid
+  // attempting to process MDX as pages until MDX is re-enabled.
+  pageExtensions: ["js", "jsx", "ts", "tsx"],
 }
 
-const withMDX = createMDX({
-  extension: /\.(md|mdx)$/,
-  // Add markdown plugins here, as desired
-})
-
-// Merge MDX config with Next.js config
-export default withMDX(nextConfig)
+export default nextConfig
