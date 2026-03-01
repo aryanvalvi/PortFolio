@@ -1,9 +1,9 @@
 import React from 'react'
 
-const npm install = () => {
+const page = () => {
   return (
-    <div>npm install</div>
+    <div>page</div>
   )
 }
 
-export default npm install
+export default page
