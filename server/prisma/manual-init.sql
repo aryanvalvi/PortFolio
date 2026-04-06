@@ -1,0 +1,46 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS "User" (
+  "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "name" TEXT NOT NULL,
+  "email" TEXT NOT NULL,
+  "passwordHash" TEXT NOT NULL,
+  "role" TEXT NOT NULL DEFAULT 'ADMIN',
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "Subject" (
+  "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "name" TEXT NOT NULL,
+  "slug" TEXT NOT NULL,
+  "description" TEXT,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "Blog" (
+  "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "title" TEXT NOT NULL,
+  "slug" TEXT NOT NULL,
+  "excerpt" TEXT NOT NULL,
+  "coverImage" TEXT,
+  "contentHtml" TEXT NOT NULL,
+  "contentJson" TEXT,
+  "isPublished" BOOLEAN NOT NULL DEFAULT 1,
+  "publishedAt" DATETIME,
+  "authorId" INTEGER NOT NULL,
+  "subjectId" INTEGER NOT NULL,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "Blog_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "Blog_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "Subject" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User" ("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "Subject_name_key" ON "Subject" ("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "Subject_slug_key" ON "Subject" ("slug");
+CREATE UNIQUE INDEX IF NOT EXISTS "Blog_slug_key" ON "Blog" ("slug");
+CREATE INDEX IF NOT EXISTS "Blog_subjectId_idx" ON "Blog" ("subjectId");
+CREATE INDEX IF NOT EXISTS "Blog_authorId_idx" ON "Blog" ("authorId");
+CREATE INDEX IF NOT EXISTS "Blog_publishedAt_idx" ON "Blog" ("publishedAt");

@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("ADMIN")
+  blogs        Blog[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Subject {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  chapters    Chapter[]
+  blogs       Blog[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Chapter {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  description String?
+  subjectId   Int
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  blogs       Blog[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subjectId])
+}
+
+model Blog {
+  id           Int      @id @default(autoincrement())
+  title        String
+  slug         String   @unique
+  excerpt      String
+  coverImage   String?
+  contentHtml  String
+  contentJson  String?
+  isPublished  Boolean  @default(true)
+  publishedAt  DateTime?
+  authorId     Int
+  subjectId    Int
+  chapterId    Int?
+  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  chapter      Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([subjectId])
+  @@index([chapterId])
+  @@index([authorId])
+  @@index([publishedAt])
+}
