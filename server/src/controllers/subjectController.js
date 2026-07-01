@@ -1,81 +1,46 @@
-const {z} = require("zod")
-const {prisma} = require("../lib/prisma")
-const {generateUniqueSlug} = require("../lib/slug")
+const prisma = require("../lib/prismaClient")
+const { generateUniqueSlug } = require("../lib/prismaConfig")
 
-const subjectSchema = z.object({
-  name: z.string().trim().min(2).max(80),
-  description: z.string().trim().max(240).optional().or(z.literal("")),
-})
+const subjectInclude = {
+  chapters: {
+    orderBy: { name: "asc" },
+    include: { _count: { select: { blogs: true } } },
+  },
+  _count: { select: { blogs: true, chapters: true } },
+}
 
-async function listSubjects(_request, response, next) {
+async function listSubjects(_req, res, next) {
   try {
     const subjects = await prisma.subject.findMany({
-      orderBy: {name: "asc"},
-      include: {
-        chapters: {
-          orderBy: {name: "asc"},
-          include: {
-            _count: {
-              select: {blogs: true},
-            },
-          },
-        },
-        _count: {
-          select: {blogs: true, chapters: true},
-        },
-      },
+      orderBy: { name: "asc" },
+      include: subjectInclude,
     })
-
-    response.json({subjects})
-  } catch (error) {
-    next(error)
+    res.json({ subjects })
+  } catch (err) {
+    next(err)
   }
 }
 
-async function createSubject(request, response, next) {
+async function createSubject(req, res, next) {
   try {
-    const payload = subjectSchema.parse(request.body)
-    const existingSubject = await prisma.subject.findFirst({
-      where: {
-        name: {
-          equals: payload.name,
-        },
-      },
+    const existing = await prisma.subject.findFirst({
+      where: { name: { equals: req.body.name } },
     })
 
-    if (existingSubject) {
-      response.status(409).json({message: "That subject already exists."})
-      return
+    if (existing) {
+      return res.status(409).json({ message: "That subject already exists." })
     }
 
-    const slug = await generateUniqueSlug(prisma.subject, payload.name, "subject")
+    const slug = await generateUniqueSlug(prisma.subject, req.body.name, "subject")
     const subject = await prisma.subject.create({
-      data: {
-        name: payload.name,
-        description: payload.description || null,
-        slug,
-      },
-      include: {
-        chapters: {
-          include: {
-            _count: {
-              select: {blogs: true},
-            },
-          },
-        },
-        _count: {
-          select: {blogs: true, chapters: true},
-        },
-      },
+      data: { name: req.body.name, description: req.body.description || null, slug },
+      include: subjectInclude,
     })
 
-    response.status(201).json({subject})
-  } catch (error) {
-    next(error)
+    res.status(201).json({ subject })
+  } catch (err) {
+    next(err)
   }
 }
 
-module.exports = {
-  listSubjects,
-  createSubject,
-}
+module.exports = { listSubjects, createSubject }

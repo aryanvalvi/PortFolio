@@ -1,49 +1,31 @@
 const jwt = require("jsonwebtoken")
-const {prisma} = require("../lib/prisma")
+const prisma = require("../lib/prismaClient")
 
-function getTokenFromRequest(request) {
-  const authHeader = request.headers.authorization || ""
-
-  if (!authHeader.startsWith("Bearer ")) {
-    return null
-  }
-
-  return authHeader.slice(7)
-}
-
-async function requireAuth(request, response, next) {
+async function requireAuth(req, res, next) {
   try {
-    const token = getTokenFromRequest(request)
+    const header = req.headers.authorization || ""
 
-    if (!token) {
-      response.status(401).json({message: "Authentication token is missing."})
-      return
+    if (!header.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Authentication token is missing." })
     }
 
+    const token = header.slice(7)
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
+
     const user = await prisma.user.findUnique({
-      where: {id: decoded.userId},
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
+      where: { id: decoded.userId },
+      select: { id: true, name: true, email: true, role: true },
     })
 
     if (!user) {
-      response.status(401).json({message: "User not found."})
-      return
+      return res.status(401).json({ message: "User not found." })
     }
 
-    request.user = user
+    req.user = user
     next()
-  } catch (error) {
-    response.status(401).json({message: "Invalid or expired token."})
+  } catch {
+    res.status(401).json({ message: "Invalid or expired token." })
   }
 }
 
-module.exports = {
-  getTokenFromRequest,
-  requireAuth,
-}
+module.exports = requireAuth

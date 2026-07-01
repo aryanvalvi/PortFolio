@@ -3,13 +3,8 @@ require("dotenv").config()
 const express = require("express")
 const cors = require("cors")
 const path = require("path")
-const {ZodError} = require("zod")
-const healthRoutes = require("./routes/health")
-const authRoutes = require("./routes/auth")
-const subjectRoutes = require("./routes/subjects")
-const blogRoutes = require("./routes/blogs")
-const uploadRoutes = require("./routes/uploads")
-const {prisma} = require("./lib/prisma")
+const routes = require("./routes/index")
+const prisma = require("./lib/prismaClient")
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is required in server/.env")
@@ -17,85 +12,58 @@ if (!process.env.JWT_SECRET) {
 
 const app = express()
 const port = Number(process.env.PORT || 4000)
+
 const allowedOrigins = (process.env.CLIENT_URL || "")
   .split(",")
-  .map(origin => origin.trim())
+  .map(o => o.trim())
   .filter(Boolean)
 
 app.use(
   cors({
     origin(origin, callback) {
       if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-        callback(null, true)
-        return
+        return callback(null, true)
       }
-
       callback(new Error("Origin is not allowed by CORS."))
     },
   })
 )
 
-app.use(express.json({limit: "10mb"}))
-app.use(express.urlencoded({extended: true, limit: "10mb"}))
+app.use(express.json({ limit: "10mb" }))
+app.use(express.urlencoded({ extended: true, limit: "10mb" }))
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")))
 
-app.use("/api/health", healthRoutes)
-app.use("/api/auth", authRoutes)
-app.use("/api/subjects", subjectRoutes)
-app.use("/api/blogs", blogRoutes)
-app.use("/api/uploads", uploadRoutes)
+app.use("/api", routes)
 
-app.use((error, _request, response, _next) => {
-  if (error instanceof ZodError) {
-    response.status(400).json({
-      message: "Validation failed.",
-      issues: error.flatten(),
-    })
-    return
+// ── Global error handler ──────────────────────────────────────────────────────
+
+app.use((err, _req, res, _next) => {
+  if (err.message === "Origin is not allowed by CORS.") {
+    return res.status(403).json({ message: err.message })
   }
 
-  if (error.message === "Origin is not allowed by CORS.") {
-    response.status(403).json({message: error.message})
-    return
-  }
+  const status = typeof err.statusCode === "number" ? err.statusCode : 500
+  if (status >= 500) console.error(err)
 
-  const statusCode =
-    typeof error.statusCode === "number" ? error.statusCode : 500
-
-  if (statusCode >= 500) {
-    console.error(error)
-  }
-
-  response.status(statusCode).json({
-    message: error.message || "Something went wrong on the server.",
-  })
+  res.status(status).json({ message: err.message || "Something went wrong." })
 })
 
-async function getDatabaseStatus() {
+// ── Start ─────────────────────────────────────────────────────────────────────
+
+async function start() {
   try {
     await prisma.$queryRaw`SELECT 1`
-    return {
-      connected: true,
-      message: "Database connected successfully.",
-    }
-  } catch (error) {
-    return {
-      connected: false,
-      message: `Database connection failed: ${error.message}`,
-    }
+    console.log("Database connected.")
+  } catch {
+    console.warn("Database not connected — check DATABASE_URL.")
   }
-}
-
-async function startServer() {
-  const databaseStatus = await getDatabaseStatus()
 
   app.listen(port, () => {
     console.log(`Portfolio API running on http://localhost:${port}`)
-    console.log(databaseStatus.message)
   })
 }
 
-startServer()
+start()
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, async () => {
