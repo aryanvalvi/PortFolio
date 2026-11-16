@@ -344,7 +344,7 @@ export default function BlogDetails() {
         <div className="mt-8 rounded-[32px] border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-900 md:p-10">
           <p className="text-xs uppercase tracking-[0.2em] text-secondary dark:text-secondary-dark">
             {blog.subject.name}
-            {blog.chapter ? ` • ${blog.chapter.name}` : " • Independent topic"} •{" "}
+            {(blog.module?.name || blog.chapter?.name) ? ` • ${blog.module?.name || blog.chapter?.name}` : ""} •{" "}
             {formatDate(blog.publishedAt || blog.createdAt)}
           </p>
           <h1 className="mt-4 text-3xl font-semibold text-primary dark:text-primary-dark md:text-5xl">
@@ -354,7 +354,7 @@ export default function BlogDetails() {
             {blog.excerpt}
           </p>
           <p className="mt-4 text-sm text-secondary dark:text-secondary-dark">
-            Written by {blog.author.name}
+            Written by {blog.author?.name && blog.author.name !== "Portfolio Admin" ? blog.author.name : "Aryan Valvi"}
           </p>
 
           {blog.coverImage && (

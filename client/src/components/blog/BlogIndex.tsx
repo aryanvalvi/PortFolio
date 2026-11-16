@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import {useEffect, useState} from "react"
-import {motion} from "motion/react"
+import { useEffect, useMemo, useState } from "react"
+import { motion, AnimatePresence } from "motion/react"
 import Container from "@/components/container"
 import {
   type ApiBlog,
@@ -10,341 +10,433 @@ import {
   formatDate,
   resolveAssetUrl,
 } from "@/lib/api"
+import { FiBookOpen, FiSearch, FiFolder, FiLayers, FiArrowRight, FiFileText } from "react-icons/fi"
 
-type ChapterBucket = {
+type ModuleGroup = {
   key: string
   name: string
-  slug: string
   description: string | null
   topics: ApiBlog[]
 }
 
-type SubjectBucket = {
-  id: number
+type SubjectGroup = {
+  id: string | number
   name: string
   slug: string
   description: string | null
-  chapters: ChapterBucket[]
+  modules: ModuleGroup[]
+  standaloneTopics: ApiBlog[]
+  totalTopics: number
 }
 
-const INDEPENDENT_TOPICS_KEY = "independent-topics"
-
-function buildLibrary(blogs: ApiBlog[]) {
-  const subjectMap = new Map<number, SubjectBucket>()
+function organizeLibrary(blogs: ApiBlog[]): SubjectGroup[] {
+  const subjectMap = new Map<string, SubjectGroup>()
 
   blogs.forEach(blog => {
-    const existingSubject = subjectMap.get(blog.subject.id) || {
-      id: blog.subject.id,
-      name: blog.subject.name,
-      slug: blog.subject.slug,
-      description: blog.subject.description,
-      chapters: [],
+    const subjectId = String(blog.subject?.id || "other")
+    const subjectName = blog.subject?.name || "General"
+    const subjectSlug = blog.subject?.slug || "general"
+    const subjectDesc = blog.subject?.description || null
+
+    if (!subjectMap.has(subjectId)) {
+      subjectMap.set(subjectId, {
+        id: subjectId,
+        name: subjectName,
+        slug: subjectSlug,
+        description: subjectDesc,
+        modules: [],
+        standaloneTopics: [],
+        totalTopics: 0
+      })
     }
 
-    let chapter = existingSubject.chapters.find(currentChapter =>
-      blog.chapter
-        ? currentChapter.key === String(blog.chapter.id)
-        : currentChapter.key === `${INDEPENDENT_TOPICS_KEY}-${blog.subject.id}`
-    )
+    const group = subjectMap.get(subjectId)!
+    group.totalTopics += 1
 
-    if (!chapter) {
-      chapter = blog.chapter
-        ? {
-            key: String(blog.chapter.id),
-            name: blog.chapter.name,
-            slug: blog.chapter.slug,
-            description: blog.chapter.description,
-            topics: [],
-          }
-        : {
-            key: `${INDEPENDENT_TOPICS_KEY}-${blog.subject.id}`,
-            name: "Independent topics",
-            slug: INDEPENDENT_TOPICS_KEY,
-            description:
-              "Standalone topics that are not grouped under a chapter yet.",
-            topics: [],
-          }
-
-      existingSubject.chapters.push(chapter)
+    const mod = blog.module || blog.chapter
+    if (mod) {
+      const moduleKey = String(mod.id || mod.slug || mod.name)
+      let targetModule = group.modules.find(m => m.key === moduleKey)
+      if (!targetModule) {
+        targetModule = {
+          key: moduleKey,
+          name: mod.name,
+          description: mod.description || null,
+          topics: []
+        }
+        group.modules.push(targetModule)
+      }
+      targetModule.topics.push(blog)
+    } else {
+      group.standaloneTopics.push(blog)
     }
-
-    chapter.topics.push(blog)
-    subjectMap.set(blog.subject.id, existingSubject)
   })
 
-  return [...subjectMap.values()]
-    .map(subject => ({
-      ...subject,
-      chapters: subject.chapters.sort((firstChapter, secondChapter) => {
-        if (firstChapter.slug === INDEPENDENT_TOPICS_KEY) {
-          return 1
-        }
+  // Sort modules alphabetically
+  const result = Array.from(subjectMap.values())
+  result.forEach(s => {
+    s.modules.sort((a, b) => a.name.localeCompare(b.name))
+  })
 
-        if (secondChapter.slug === INDEPENDENT_TOPICS_KEY) {
-          return -1
-        }
-
-        return firstChapter.name.localeCompare(secondChapter.name)
-      }),
-    }))
-    .sort((firstSubject, secondSubject) =>
-      firstSubject.name.localeCompare(secondSubject.name)
-    )
+  return result.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export default function BlogIndex() {
   const [blogs, setBlogs] = useState<ApiBlog[]>([])
-  const [selectedSubjectSlug, setSelectedSubjectSlug] = useState("")
-  const [selectedChapterKey, setSelectedChapterKey] = useState("")
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>("all")
+  const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
 
   useEffect(() => {
-    let shouldIgnore = false
+    let ignore = false
 
-    const loadBlogs = async () => {
+    async function loadBlogs() {
       try {
-        const response = await apiRequest<{blogs: ApiBlog[]}>("/blogs")
-
-        if (!shouldIgnore) {
-          setBlogs(response.blogs)
+        const response = await apiRequest<{ blogs: ApiBlog[] }>("/blogs")
+        if (!ignore) {
+          setBlogs(response.blogs || [])
         }
-      } catch (error) {
-        if (!shouldIgnore) {
-          setErrorMessage(
-            error instanceof Error ? error.message : "Could not load blogs."
-          )
+      } catch (err) {
+        if (!ignore) {
+          setErrorMessage(err instanceof Error ? err.message : "Failed to load posts.")
         }
       } finally {
-        if (!shouldIgnore) {
-          setIsLoading(false)
-        }
+        if (!ignore) setIsLoading(false)
       }
     }
 
     loadBlogs()
-
-    return () => {
-      shouldIgnore = true
-    }
+    return () => { ignore = true }
   }, [])
 
-  useEffect(() => {
-    const library = buildLibrary(blogs)
+  const filteredBlogs = useMemo(() => {
+    if (!searchQuery.trim()) return blogs
+    const q = searchQuery.toLowerCase().trim()
+    return blogs.filter(b =>
+      b.title.toLowerCase().includes(q) ||
+      b.excerpt?.toLowerCase().includes(q) ||
+      b.subject?.name?.toLowerCase().includes(q) ||
+      b.module?.name?.toLowerCase().includes(q) ||
+      b.chapter?.name?.toLowerCase().includes(q)
+    )
+  }, [blogs, searchQuery])
 
-    if (library.length === 0) {
-      setSelectedSubjectSlug("")
-      setSelectedChapterKey("")
-      return
-    }
+  const subjects = useMemo(() => organizeLibrary(filteredBlogs), [filteredBlogs])
 
-    const subject =
-      library.find(currentSubject => currentSubject.slug === selectedSubjectSlug) ||
-      library[0]
+  const activeSubjects = useMemo(() => {
+    if (selectedSubjectId === "all") return subjects
+    return subjects.filter(s => String(s.id) === selectedSubjectId)
+  }, [subjects, selectedSubjectId])
 
-    if (subject.slug !== selectedSubjectSlug) {
-      setSelectedSubjectSlug(subject.slug)
-    }
-
-    const chapter =
-      subject.chapters.find(currentChapter => currentChapter.key === selectedChapterKey) ||
-      subject.chapters[0]
-
-    const nextChapterKey = chapter?.key || ""
-
-    if (nextChapterKey !== selectedChapterKey) {
-      setSelectedChapterKey(nextChapterKey)
-    }
-  }, [blogs, selectedChapterKey, selectedSubjectSlug])
-
-  const library = buildLibrary(blogs)
-  const selectedSubject =
-    library.find(subject => subject.slug === selectedSubjectSlug) || library[0]
-  const selectedChapter =
-    selectedSubject?.chapters.find(chapter => chapter.key === selectedChapterKey) ||
-    selectedSubject?.chapters[0]
+  const allSubjectTabs = useMemo(() => {
+    const raw = organizeLibrary(blogs)
+    return raw.map(s => ({
+      id: String(s.id),
+      name: s.name,
+      count: s.totalTopics
+    }))
+  }, [blogs])
 
   return (
-    <Container className="min-h-screen px-4 pb-12 pt-24 md:px-8 md:pb-16 md:pt-32">
+    <Container className="min-h-screen px-4 pb-20 pt-28 md:px-8 md:pt-36">
       <motion.div
-        initial={{opacity: 0, filter: "blur(10px)", y: 10}}
-        whileInView={{opacity: 1, filter: "blur(0px)", y: 0}}
-        transition={{duration: 0.3, ease: "easeInOut"}}
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="max-w-6xl mx-auto space-y-10"
       >
-        <h1 className="text-3xl font-semibold text-primary dark:text-primary-dark md:text-5xl">
-          Subject library
-        </h1>
-        <p className="mt-4 max-w-3xl text-sm text-secondary dark:text-secondary-dark md:text-base">
-          Browse notes the way you study them: choose a subject, open a chapter,
-          then pick the exact topic you want to read.
-        </p>
+        {/* ── Top Header ──────────────────────────────────────────────────────── */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-neutral-200/80 dark:border-neutral-800">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-wider uppercase bg-neutral-200/60 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
+              <FiBookOpen className="text-neutral-500" />
+              <span>Developer Knowledge Hub</span>
+            </div>
+            <h1 className="mt-4 text-3xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
+              Notes & Technical Guides
+            </h1>
+            <p className="mt-3 text-base text-neutral-600 dark:text-neutral-400 max-w-2xl">
+              Organized by subjects and modules. Choose a module to read a single comprehensive guide or step through its sub-topics.
+            </p>
+          </div>
 
+          {/* Search box */}
+          <div className="relative w-full md:w-80">
+            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search topics, modules..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-neutral-300 dark:border-neutral-700 bg-white/70 dark:bg-neutral-900/70 backdrop-blur text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100 transition"
+            />
+          </div>
+        </div>
+
+        {/* ── Subject Filter Pills ────────────────────────────────────────────── */}
+        {allSubjectTabs.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedSubjectId("all")}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition cursor-pointer ${
+                selectedSubjectId === "all"
+                  ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-sm"
+                  : "bg-neutral-200/60 dark:bg-neutral-800/80 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300/70 dark:hover:bg-neutral-700"
+              }`}
+            >
+              All Subjects ({blogs.length})
+            </button>
+            {allSubjectTabs.map(sub => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => setSelectedSubjectId(sub.id)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                  selectedSubjectId === sub.id
+                    ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-sm"
+                    : "bg-neutral-200/60 dark:bg-neutral-800/80 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300/70 dark:hover:bg-neutral-700"
+                }`}
+              >
+                <span>{sub.name}</span>
+                <span className="text-xs opacity-60">({sub.count})</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── Loading / Error / Empty ─────────────────────────────────────────── */}
         {isLoading && (
-          <div className="mt-10 rounded-3xl border border-neutral-200 bg-white p-6 text-sm text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
-            Loading your subject library...
+          <div className="py-20 text-center text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
+            Loading your knowledge library...
           </div>
         )}
 
         {!isLoading && errorMessage && (
-          <div className="mt-10 rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
+          <div className="rounded-3xl border border-rose-300 bg-rose-50/70 dark:bg-rose-950/30 p-6 text-sm text-rose-700 dark:text-rose-300">
             {errorMessage}
           </div>
         )}
 
-        {!isLoading && !errorMessage && library.length === 0 && (
-          <div className="mt-10 rounded-3xl border border-neutral-200 bg-white p-6 text-sm text-secondary dark:border-neutral-700 dark:bg-neutral-900 dark:text-secondary-dark">
-            No topics yet. Login to the admin panel and publish your first one.
+        {!isLoading && !errorMessage && activeSubjects.length === 0 && (
+          <div className="rounded-3xl border border-dashed border-neutral-300 dark:border-neutral-800 p-12 text-center">
+            <FiFolder className="mx-auto text-4xl text-neutral-400 mb-3" />
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">No topics found</h3>
+            <p className="mt-1 text-sm text-neutral-500">
+              {searchQuery ? `No posts matched "${searchQuery}".` : "Publish your first module and topics from the admin panel."}
+            </p>
           </div>
         )}
 
-        {!isLoading && !errorMessage && library.length > 0 && (
-          <div className="mt-10 grid gap-6 xl:grid-cols-[0.95fr_0.95fr_1.2fr]">
-            <section className="rounded-[28px] border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-900">
-              <p className="text-xs uppercase tracking-[0.22em] text-secondary dark:text-secondary-dark">
-                Subjects
-              </p>
-              <div className="mt-4 space-y-3">
-                {library.map(subject => {
-                  const isActive = subject.slug === selectedSubject?.slug
-                  const topicCount = subject.chapters.reduce(
-                    (count, chapter) => count + chapter.topics.length,
-                    0
-                  )
-
-                  return (
-                    <button
-                      key={subject.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedSubjectSlug(subject.slug)
-                        setSelectedChapterKey(subject.chapters[0]?.key || "")
-                      }}
-                      className={`w-full rounded-3xl border p-4 text-left transition ${
-                        isActive
-                          ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
-                          : "border-neutral-200 text-neutral-700 hover:border-neutral-400 dark:border-neutral-700 dark:text-neutral-200"
-                      }`}
-                    >
-                      <p className="text-lg font-semibold">{subject.name}</p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.18em] opacity-75">
-                        {subject.chapters.length} chapter
-                        {subject.chapters.length === 1 ? "" : "s"} • {topicCount} topic
-                        {topicCount === 1 ? "" : "s"}
-                      </p>
-                      <p className="mt-3 text-sm opacity-80">
-                        {subject.description || "No description added yet."}
-                      </p>
-                    </button>
-                  )
-                })}
+        {/* ── Structured Subjects & Modules List ──────────────────────────────── */}
+        {!isLoading && !errorMessage && activeSubjects.map(subject => (
+          <section
+            key={subject.id}
+            className="rounded-[32px] border border-neutral-200/80 dark:border-neutral-800/80 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-sm p-6 md:p-8 space-y-8 shadow-sm"
+          >
+            {/* Subject Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-neutral-200/60 dark:border-neutral-800/60 pb-5">
+              <div>
+                <span className="text-xs font-bold tracking-widest text-neutral-400 uppercase">
+                  Subject
+                </span>
+                <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">
+                  {subject.name}
+                </h2>
+                {subject.description && (
+                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400 max-w-3xl">
+                    {subject.description}
+                  </p>
+                )}
               </div>
-            </section>
+              <span className="self-start md:self-auto text-xs px-3 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 font-medium">
+                {subject.totalTopics} {subject.totalTopics === 1 ? "article" : "articles"}
+              </span>
+            </div>
 
-            <section className="rounded-[28px] border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-900">
-              <p className="text-xs uppercase tracking-[0.22em] text-secondary dark:text-secondary-dark">
-                {selectedSubject ? `${selectedSubject.name} chapters` : "Chapters"}
-              </p>
+            {/* Modules inside Subject */}
+            <div className="space-y-8">
+              {subject.modules.map(mod => {
+                const isSingleGuide = mod.topics.length === 1
+                const singleBlog = mod.topics[0]
 
-              {!selectedSubject && (
-                <p className="mt-4 text-sm text-secondary dark:text-secondary-dark">
-                  Select a subject to view its chapters.
-                </p>
-              )}
-
-              {selectedSubject && (
-                <div className="mt-4 space-y-3">
-                  {selectedSubject.chapters.map(chapter => {
-                    const isActive = chapter.key === selectedChapter?.key
-
-                    return (
-                      <button
-                        key={chapter.key}
-                        type="button"
-                        onClick={() => setSelectedChapterKey(chapter.key)}
-                        className={`w-full rounded-3xl border p-4 text-left transition ${
-                          isActive
-                            ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
-                            : "border-neutral-200 text-neutral-700 hover:border-neutral-400 dark:border-neutral-700 dark:text-neutral-200"
-                        }`}
-                      >
-                        <p className="text-base font-semibold">{chapter.name}</p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.18em] opacity-75">
-                          {chapter.topics.length} topic
-                          {chapter.topics.length === 1 ? "" : "s"}
-                        </p>
-                        <p className="mt-3 text-sm opacity-80">
-                          {chapter.description || "Open this chapter to view its topics."}
-                        </p>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-[28px] border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-900">
-              <p className="text-xs uppercase tracking-[0.22em] text-secondary dark:text-secondary-dark">
-                {selectedChapter ? `${selectedChapter.name} topics` : "Topics"}
-              </p>
-
-              {selectedSubject && selectedChapter && (
-                <div className="mt-4 rounded-3xl border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-950/40">
-                  <p className="text-sm font-medium text-primary dark:text-primary-dark">
-                    {selectedSubject.name} / {selectedChapter.name}
-                  </p>
-                  <p className="mt-2 text-sm text-secondary dark:text-secondary-dark">
-                    {selectedChapter.description ||
-                      "Choose a topic below to open the full write-up."}
-                  </p>
-                </div>
-              )}
-
-              {!selectedChapter && (
-                <p className="mt-4 text-sm text-secondary dark:text-secondary-dark">
-                  Select a chapter to view its topics.
-                </p>
-              )}
-
-              {selectedChapter && (
-                <div className="mt-4 space-y-4">
-                  {selectedChapter.topics.map(topic => (
-                    <Link
-                      key={topic.id}
-                      href={`/blog/${topic.slug}`}
-                      className="group block overflow-hidden rounded-[28px] border border-neutral-200 bg-white transition hover:-translate-y-1 hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-900"
-                    >
-                      {topic.coverImage ? (
-                        <img
-                          src={resolveAssetUrl(topic.coverImage)}
-                          alt={topic.title}
-                          className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-                        />
-                      ) : (
-                        <div className="flex h-32 items-end bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.14),_transparent_56%),linear-gradient(135deg,_#f8fafc,_#e2e8f0)] p-5 dark:bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.12),_transparent_56%),linear-gradient(135deg,_#111827,_#020617)]">
-                          <span className="rounded-full bg-white/70 px-3 py-1 text-xs uppercase tracking-[0.2em] text-neutral-700 backdrop-blur dark:bg-white/10 dark:text-neutral-100">
-                            {selectedChapter.name}
-                          </span>
+                return (
+                  <div
+                    key={mod.key}
+                    className="rounded-3xl border border-neutral-200/80 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-950/40 p-5 md:p-6 space-y-5"
+                  >
+                    {/* Module Title Banner */}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-sm">
+                          <FiLayers />
                         </div>
-                      )}
-
-                      <div className="space-y-3 p-6">
-                        <p className="text-xs uppercase tracking-[0.2em] text-secondary dark:text-secondary-dark">
-                          {selectedSubject?.name} • {formatDate(topic.publishedAt || topic.createdAt)}
-                        </p>
-                        <h2 className="text-xl font-semibold text-primary dark:text-primary-dark">
-                          {topic.title}
-                        </h2>
-                        <p className="text-sm text-secondary dark:text-secondary-dark">
-                          {topic.excerpt}
-                        </p>
+                        <div>
+                          <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
+                            {mod.name}
+                          </h3>
+                          {mod.description && (
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                              {mod.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </Link>
-                  ))}
+
+                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${
+                        isSingleGuide
+                          ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50"
+                          : "bg-neutral-200/80 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+                      }`}>
+                        {isSingleGuide ? "Single Comprehensive Guide" : `${mod.topics.length} Sub-topics`}
+                      </span>
+                    </div>
+
+                    {/* CASE 1: Single Guide (No sub-topics) -> Clean Featured Card */}
+                    {isSingleGuide && (
+                      <Link
+                        href={`/blog/${singleBlog.slug}`}
+                        className="group flex flex-col md:flex-row gap-6 items-stretch rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 md:p-5 transition hover:border-neutral-400 dark:hover:border-neutral-600 hover:shadow-md"
+                      >
+                        {singleBlog.coverImage ? (
+                          <div className="w-full md:w-64 h-40 md:h-auto rounded-xl overflow-hidden shrink-0">
+                            <img
+                              src={resolveAssetUrl(singleBlog.coverImage)}
+                              alt={singleBlog.title}
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-full md:w-48 h-32 md:h-auto rounded-xl bg-neutral-200/50 dark:bg-neutral-800/50 flex items-center justify-center text-neutral-400 shrink-0">
+                            <FiFileText className="text-3xl" />
+                          </div>
+                        )}
+
+                        <div className="flex flex-col justify-between flex-1 py-1">
+                          <div className="space-y-2">
+                            <span className="text-xs font-semibold tracking-wider text-neutral-400 uppercase">
+                              {formatDate(singleBlog.publishedAt || singleBlog.createdAt)}
+                            </span>
+                            <h4 className="text-xl font-bold text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                              {singleBlog.title}
+                            </h4>
+                            <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">
+                              {singleBlog.excerpt}
+                            </p>
+                          </div>
+
+                          <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-neutral-900 dark:text-white">
+                            <span>Read Complete Guide</span>
+                            <FiArrowRight className="transition transform group-hover:translate-x-1" />
+                          </div>
+                        </div>
+                      </Link>
+                    )}
+
+                    {/* CASE 2: Multiple Sub-topics -> Grid of numbered topic cards */}
+                    {!isSingleGuide && (
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {mod.topics.map((topic, index) => (
+                          <Link
+                            key={topic.id}
+                            href={`/blog/${topic.slug}`}
+                            className="group flex flex-col justify-between rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 transition hover:-translate-y-1 hover:border-neutral-400 dark:hover:border-neutral-600 hover:shadow-md"
+                          >
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-xs font-bold text-neutral-700 dark:text-neutral-300">
+                                  {String(index + 1).padStart(2, "0")}
+                                </span>
+                                <span className="text-[11px] font-medium text-neutral-400">
+                                  {formatDate(topic.publishedAt || topic.createdAt)}
+                                </span>
+                              </div>
+
+                              {topic.coverImage && (
+                                <div className="h-32 w-full rounded-xl overflow-hidden">
+                                  <img
+                                    src={resolveAssetUrl(topic.coverImage)}
+                                    alt={topic.title}
+                                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                  />
+                                </div>
+                              )}
+
+                              <h4 className="text-base font-bold text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition line-clamp-2">
+                                {topic.title}
+                              </h4>
+
+                              <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">
+                                {topic.excerpt}
+                              </p>
+                            </div>
+
+                            <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                              <span>Read Topic</span>
+                              <FiArrowRight className="transition transform group-hover:translate-x-1" />
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Standalone topics without a module */}
+              {subject.standaloneTopics.length > 0 && (
+                <div className="rounded-3xl border border-neutral-200/80 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-950/40 p-5 md:p-6 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <FiFileText className="text-neutral-400" />
+                    <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+                      Standalone Articles
+                    </h3>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {subject.standaloneTopics.map(topic => (
+                      <Link
+                        key={topic.id}
+                        href={`/blog/${topic.slug}`}
+                        className="group flex flex-col justify-between rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 transition hover:-translate-y-1 hover:border-neutral-400 dark:hover:border-neutral-600 hover:shadow-md"
+                      >
+                        <div className="space-y-3">
+                          <span className="text-[11px] font-medium text-neutral-400">
+                            {formatDate(topic.publishedAt || topic.createdAt)}
+                          </span>
+
+                          {topic.coverImage && (
+                            <div className="h-32 w-full rounded-xl overflow-hidden">
+                              <img
+                                src={resolveAssetUrl(topic.coverImage)}
+                                alt={topic.title}
+                                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                              />
+                            </div>
+                          )}
+
+                          <h4 className="text-base font-bold text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition line-clamp-2">
+                            {topic.title}
+                          </h4>
+
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">
+                            {topic.excerpt}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                          <span>Read Article</span>
+                          <FiArrowRight className="transition transform group-hover:translate-x-1" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
-            </section>
-          </div>
-        )}
+            </div>
+          </section>
+        ))}
       </motion.div>
     </Container>
   )

@@ -2,12 +2,18 @@ const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const prisma = require("../lib/prismaClient")
 
+// ── POST /api/auth/login ──────────────────────────────────────────────────────
 async function login(req, res, next) {
   try {
     const { email, password } = req.body
 
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required." })
+    }
+
+    const cleanEmail = email.toLowerCase().trim()
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: cleanEmail }
     })
 
     if (!user) {
@@ -23,11 +29,11 @@ async function login(req, res, next) {
       return res.status(401).json({ message: "Invalid email or password." })
     }
 
-    // upgrade plain-text password to bcrypt on first login
+    // Auto-upgrade legacy plain-text password to bcrypt hash
     if (!isBcrypt) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { passwordHash: await bcrypt.hash(password, 10) },
+        data: { passwordHash: await bcrypt.hash(password, 10) }
       })
     }
 
@@ -39,36 +45,24 @@ async function login(req, res, next) {
 
     res.json({
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
     })
   } catch (err) {
     next(err)
   }
 }
 
+// ── GET /api/auth/me ──────────────────────────────────────────────────────────
 function getCurrentUser(req, res) {
   res.json({ user: req.user })
 }
 
-async function createAdmin(req, res, next) {
-  try {
-    const { email, password, name } = req.body
-
-    const passwordHash = await bcrypt.hash(password, 10)
-
-    const admin = await prisma.user.upsert({
-      where: { email: email.toLowerCase() },
-      update: { name, passwordHash },
-      create: { email: email.toLowerCase(), name, passwordHash },
-    })
-
-    res.status(201).json({
-      message: "Admin created successfully.",
-      user: { id: admin.id, name: admin.name, email: admin.email },
-    })
-  } catch (err) {
-    next(err)
-  }
+module.exports = {
+  login,
+  getCurrentUser
 }
-
-module.exports = { login, getCurrentUser, createAdmin }

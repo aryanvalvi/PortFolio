@@ -35,10 +35,10 @@ const Navbar = () => {
       title: "About",
       href: "/about",
     },
-    // {
-    //   title: "Blog",
-    //   href: "/blog",
-    // },
+    {
+      title: "Blogs",
+      href: "/blog",
+    },
     {
       title: "Contact",
       href: "/contact",
@@ -49,20 +49,11 @@ const Navbar = () => {
     : user
       ? [
         {
-          title: "Admin",
-          href: "/admin",
-        },
-        {
           title: "Logout",
           action: logout,
         },
       ]
-      : [
-        // {
-        //   title: "Login",
-        //   href: "/login",
-        // },
-      ]
+      : []
   const navItems = [...baseItems, ...authItems]
   const [hovered, setHovered] = useState<null | string>(null)
   const [scrolled, setScrolled] = useState<boolean>(false)

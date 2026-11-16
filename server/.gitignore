@@ -1,5 +1,16 @@
-node_modules
+# dependencies
+node_modules/
+
+# environment variables
 .env
-uploads
+.env.*
+!.env.example
+
+# storage & database
+uploads/
 prisma/dev.db
 prisma/dev.db-journal
+
+# system & editor
+.DS_Store
+*.log

@@ -4,37 +4,43 @@ export const API_BASE_URL =
 const API_URL = `${API_BASE_URL}/api`
 
 export type ApiUser = {
-  id: number
+  id: string | number
   name: string
   email: string
   role?: string
 }
 
-export type ApiChapter = {
-  id: number
+export type ApiModule = {
+  id: string | number
   name: string
   slug: string
   description: string | null
-  subjectId: number
+  subjectId: string | number
+  blogs?: ApiBlog[]
   _count?: {
     blogs: number
   }
 }
 
+// Backwards-compatible alias
+export type ApiChapter = ApiModule
+
 export type ApiSubject = {
-  id: number
+  id: string | number
   name: string
   slug: string
   description: string | null
-  chapters?: ApiChapter[]
+  modules?: ApiModule[]
+  chapters?: ApiModule[]
   _count?: {
     blogs: number
-    chapters: number
+    modules?: number
+    chapters?: number
   }
 }
 
 export type ApiBlog = {
-  id: number
+  id: string | number
   title: string
   slug: string
   excerpt: string
@@ -43,10 +49,12 @@ export type ApiBlog = {
   contentJson: unknown
   isPublished: boolean
   publishedAt: string | null
+  order?: number
   createdAt: string
   updatedAt: string
   subject: ApiSubject
-  chapter?: ApiChapter | null
+  module?: ApiModule | null
+  chapter?: ApiModule | null
   author: ApiUser
 }
 

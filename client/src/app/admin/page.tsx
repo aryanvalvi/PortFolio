@@ -3,7 +3,7 @@ import Container from "@/components/container"
 
 export default function AdminPage() {
   return (
-    <Container className="min-h-screen px-4 pb-12 pt-24 md:px-8 md:pb-16 md:pt-32">
+    <Container className="min-h-screen px-4 pb-16 pt-28 md:px-8 md:pb-20 md:pt-36">
       <AdminDashboard />
     </Container>
   )

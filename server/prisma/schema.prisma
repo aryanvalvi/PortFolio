@@ -3,12 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   name         String
   email        String   @unique
   passwordHash String
@@ -19,22 +19,22 @@ model User {
 }
 
 model Subject {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String   @unique
   slug        String   @unique
   description String?
-  chapters    Chapter[]
+  modules     Module[]
   blogs       Blog[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
-model Chapter {
-  id          Int      @id @default(autoincrement())
+model Module {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   slug        String   @unique
   description String?
-  subjectId   Int
+  subjectId   String   @db.ObjectId
   subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   blogs       Blog[]
   createdAt   DateTime @default(now())
@@ -44,26 +44,25 @@ model Chapter {
 }
 
 model Blog {
-  id           Int      @id @default(autoincrement())
-  title        String
-  slug         String   @unique
-  excerpt      String
-  coverImage   String?
-  contentHtml  String
-  contentJson  String?
-  isPublished  Boolean  @default(true)
-  publishedAt  DateTime?
-  authorId     Int
-  subjectId    Int
-  chapterId    Int?
-  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  chapter      Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  slug        String    @unique
+  excerpt     String
+  coverImage  String?
+  contentHtml String
+  contentJson String?
+  isPublished Boolean   @default(true)
+  publishedAt DateTime?
+  order       Int       @default(0)
+  authorId    String    @db.ObjectId
+  subjectId   String    @db.ObjectId
+  moduleId    String?   @db.ObjectId
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  module      Module?   @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([subjectId])
-  @@index([chapterId])
-  @@index([authorId])
-  @@index([publishedAt])
+  @@index([moduleId])
 }

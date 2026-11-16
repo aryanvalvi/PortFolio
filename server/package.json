@@ -10,8 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio",
-    "create-admin": "node scripts/create-admin.js"
+    "prisma:studio": "prisma studio"
   },
   "keywords": [],
   "author": "",
