@@ -35,10 +35,10 @@ const Navbar = () => {
       title: "About",
       href: "/about",
     },
-    {
-      title: "Blogs",
-      href: "/blog",
-    },
+    // {
+    //   title: "Blogs",
+    //   href: "/blog",
+    // },
     {
       title: "Contact",
       href: "/contact",
