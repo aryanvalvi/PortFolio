@@ -16,12 +16,9 @@ import {
 } from "@/lib/api"
 import {
   FiEdit3,
-  FiFolderPlus,
   FiList,
-  FiPlus,
   FiTrash2,
   FiEye,
-  FiCheck,
   FiUploadCloud,
   FiX,
   FiLayers,
@@ -428,11 +425,10 @@ export default function AdminDashboard() {
         <button
           type="button"
           onClick={() => setActiveTab("write")}
-          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition cursor-pointer ${
-            activeTab === "write"
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition cursor-pointer ${activeTab === "write"
               ? "border-neutral-900 text-neutral-900 dark:border-neutral-100 dark:text-white"
               : "border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
-          }`}
+            }`}
         >
           <FiEdit3 />
           <span>{editingBlogId ? "Edit Topic" : "Write Topic"}</span>
@@ -441,11 +437,10 @@ export default function AdminDashboard() {
         <button
           type="button"
           onClick={() => setActiveTab("structure")}
-          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition cursor-pointer ${
-            activeTab === "structure"
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition cursor-pointer ${activeTab === "structure"
               ? "border-neutral-900 text-neutral-900 dark:border-neutral-100 dark:text-white"
               : "border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
-          }`}
+            }`}
         >
           <FiLayers />
           <span>Subjects & Modules</span>
@@ -454,11 +449,10 @@ export default function AdminDashboard() {
         <button
           type="button"
           onClick={() => setActiveTab("posts")}
-          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition cursor-pointer ${
-            activeTab === "posts"
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition cursor-pointer ${activeTab === "posts"
               ? "border-neutral-900 text-neutral-900 dark:border-neutral-100 dark:text-white"
               : "border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
-          }`}
+            }`}
         >
           <FiList />
           <span>All Topics ({blogs.length})</span>
@@ -468,11 +462,10 @@ export default function AdminDashboard() {
       {/* ── Status / Error messages ─────────────────────────────────────────── */}
       {(errorMessage || statusMessage) && (
         <div
-          className={`flex items-center justify-between p-4 rounded-2xl text-sm ${
-            errorMessage
+          className={`flex items-center justify-between p-4 rounded-2xl text-sm ${errorMessage
               ? "bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-200"
               : "bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-900 dark:text-emerald-200"
-          }`}
+            }`}
         >
           <span>{errorMessage || statusMessage}</span>
           <button
@@ -550,7 +543,7 @@ export default function AdminDashboard() {
                   </select>
                 ) : (
                   <div className="text-xs text-amber-600 dark:text-amber-400">
-                    No subjects yet. Go to the "Subjects & Modules" tab to create your first subject!
+                    No subjects yet. Go to the &quot;Subjects &amp; Modules&quot; tab to create your first subject!
                   </div>
                 )}
               </div>
@@ -682,8 +675,8 @@ export default function AdminDashboard() {
                 {isSavingBlog
                   ? "Saving Topic..."
                   : editingBlogId
-                  ? "Update Topic"
-                  : "Publish Topic"}
+                    ? "Update Topic"
+                    : "Publish Topic"}
               </button>
             </div>
           </div>
@@ -748,11 +741,10 @@ export default function AdminDashboard() {
                     key={s.id}
                     type="button"
                     onClick={() => setActiveSubjectForModules(String(s.id))}
-                    className={`w-full text-left p-3.5 rounded-2xl border transition flex items-center justify-between cursor-pointer ${
-                      isSelected
+                    className={`w-full text-left p-3.5 rounded-2xl border transition flex items-center justify-between cursor-pointer ${isSelected
                         ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900 shadow-sm"
                         : "border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:border-neutral-400"
-                    }`}
+                      }`}
                   >
                     <div>
                       <p className="font-bold text-sm">{s.name}</p>

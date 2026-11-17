@@ -5,8 +5,6 @@ import { ContainerTextFlip } from "../components/ui/container-text-flip"
 import Image from "next/image"
 import { motion } from "motion/react"
 import React from "react"
-
-import Projects2 from "../components/Projects2"
 const pill =
   "rounded-full border border-neutral-200 px-1.5 md:px-3 py-1 text-[0.60rem] md:text-[0.80rem] text-neutral-700 dark:border-neutral-800 dark:text-neutral-300"
 const whatIDo: { title: string; desc: React.ReactNode; tags: string[] }[] = [
@@ -89,20 +87,6 @@ const whatIDo: { title: string; desc: React.ReactNode; tags: string[] }[] = [
 ]
 
 const page = () => {
-  const dev = [
-    "Next.js",
-    "TypeScript",
-    "React",
-    "Node.js",
-    "Express",
-    "MongoDB",
-    "SQL",
-    "Postgres",
-    "REST APIs",
-    "Auth",
-  ]
-  const desing = ["Figma", "Tailwindcss", "Scss", "Wireframe"]
-  const dep = ["VPS", "Nginx", "CI-CD", "Firewall", "SSL"]
   return (
     <div>
       <motion.div

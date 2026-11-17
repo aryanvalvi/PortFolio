@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { motion, AnimatePresence } from "motion/react"
+import { motion } from "motion/react"
 import Container from "@/components/container"
 import {
   type ApiBlog,
@@ -180,11 +180,10 @@ export default function BlogIndex() {
             <button
               type="button"
               onClick={() => setSelectedSubjectId("all")}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition cursor-pointer ${
-                selectedSubjectId === "all"
+              className={`px-4 py-2 rounded-full text-sm font-medium transition cursor-pointer ${selectedSubjectId === "all"
                   ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-sm"
                   : "bg-neutral-200/60 dark:bg-neutral-800/80 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300/70 dark:hover:bg-neutral-700"
-              }`}
+                }`}
             >
               All Subjects ({blogs.length})
             </button>
@@ -193,11 +192,10 @@ export default function BlogIndex() {
                 key={sub.id}
                 type="button"
                 onClick={() => setSelectedSubjectId(sub.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition cursor-pointer flex items-center gap-1.5 ${
-                  selectedSubjectId === sub.id
+                className={`px-4 py-2 rounded-full text-sm font-medium transition cursor-pointer flex items-center gap-1.5 ${selectedSubjectId === sub.id
                     ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-sm"
                     : "bg-neutral-200/60 dark:bg-neutral-800/80 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300/70 dark:hover:bg-neutral-700"
-                }`}
+                  }`}
               >
                 <span>{sub.name}</span>
                 <span className="text-xs opacity-60">({sub.count})</span>
@@ -284,11 +282,10 @@ export default function BlogIndex() {
                         </div>
                       </div>
 
-                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                        isSingleGuide
+                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${isSingleGuide
                           ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50"
                           : "bg-neutral-200/80 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
-                      }`}>
+                        }`}>
                         {isSingleGuide ? "Single Comprehensive Guide" : `${mod.topics.length} Sub-topics`}
                       </span>
                     </div>
