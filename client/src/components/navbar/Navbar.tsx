@@ -28,7 +28,7 @@ const Navbar = () => {
   const baseItems: NavItem[] = [
     {
       title: "Download Resume",
-      href: "/resume/Aryan_Valvi_Full_Stack.pdf",
+      href: "/resume/AryanValvi_FullStack.pdf",
       download: true,
     },
     {
